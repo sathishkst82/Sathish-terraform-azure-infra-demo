@@ -1,0 +1,14 @@
+name: terraform-ci
+on: { pull_request: {} }
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive
+      - run: cd environments/dev && terraform init -backend=false && terraform validate
+      - run: tflint --init && tflint --recursive
+      - run: wizcli iac scan --path .
+      - run: terraform-docs markdown table --output-check README.md .
