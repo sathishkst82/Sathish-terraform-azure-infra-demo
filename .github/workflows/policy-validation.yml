@@ -1,11 +1,38 @@
 name: policy-validation
+
 on:
   pull_request:
-    paths: ["docs/policies/**", "modules/governance/**"]
+    paths:
+      - 'governance/**'
+      - 'modules/governance/**'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
 jobs:
-  policy-check:
+  validate-policies:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: jq . docs/policies/*.json
-      - run: echo "OPA placeholder: conftest test docs/policies"
+      - name: Validate Azure Policy JSON
+        run: |
+          files=$(find governance -name '*.json' -o -path 'modules/governance/*.json' 2>/dev/null || true)
+          if [ -z "$files" ]; then
+            echo "No policy JSON files found in governance paths."
+            exit 0
+          fi
+          for f in $files; do
+            echo "Validating $f"
+            python -m json.tool "$f" > /dev/null
+          done
+      - name: Validate governance module presence
+        run: |
+          test -d modules/governance || (echo "modules/governance missing" && exit 1)
+      - name: Validate initiative/assignment placeholders
+        run: |
+          echo "Validate Policy Assignments and Initiatives placeholder"
+      - name: Future OPA integration placeholder
+        run: |
+          echo 'TODO: Add conftest/OPA policy pack checks'
