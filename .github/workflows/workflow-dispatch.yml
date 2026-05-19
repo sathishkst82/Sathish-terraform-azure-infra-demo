@@ -1,131 +1,78 @@
-name: workflow-dispatch
+name: terraform-dispatch
 
 on:
   workflow_dispatch:
     inputs:
-      terraform_variable_group:
+      branch:
+        description: Git branch to execute
+        required: true
+        type: string
+        default: main
+      environment:
+        description: Deployment environment
+        required: true
         type: choice
-        description: Select the environment.
-        default: DEV
         options:
-          - DEV
-          - UAT
-          - PROD
-      infra_group:
+          - dev
+          - prod
+      terraform_action:
+        description: Terraform operation
+        required: true
         type: choice
-        description: Select the infrastructure group.
         options:
-          - aks
-          - apim-apis
-          - appvms
-          - base
-          - dbvms
-          - linux
-          - network
-          - recovery
-      action:
-        type: choice
-        description: Select the terraform action to run.
-        default: plan
-        options:
-          - plan-ci
-          - apply-ci
+          - validate
           - plan
-          - plan-debug
-          - plan-apply
-          - destroy-plan
-          - destroy-apply
-      import_id:
+          - apply
+      region:
+        description: Azure Region
+        required: true
         type: string
-        description: |
-          OPTIONAL: id of a resource to import into terraform state.
-          Requires "plan" Action.
-        required: false
-        default: ''
-      import_name:
+        default: eastus
+      subscription_id:
+        description: Azure subscription id
+        required: true
         type: string
-        description: |
-          OPTIONAL: name of the resource to import into terraform state.
-          Requires "plan" Action.
-        required: false
-        default: ''
-      tf_unlock_id:
+      terraform_version:
+        description: Terraform version
+        required: true
         type: string
-        description: |
-          OPTIONAL: Unlock state file by entering the lock id from the state lock conflict error message.
-          Requires "plan" Action.
-        required: false
-        default: ''
-      tf_remove_name:
-        type: string
-        description: |
-          OPTIONAL: Remove part of the state file by entering the resource name to remove.
-          Requires "plan" Action.
-        required: false
-        default: ''
-      tf_use_extra_args:
-        type: string
-        description: OPTIONAL: Additional terraform CLI args.
-        required: false
-        default: ''
+        default: 1.8.5
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
 
 jobs:
-  plan-ci:
-    if: ${{ inputs.action == 'plan-ci' }}
-    uses: ./.github/workflows/allinfra-iac.yml
+  validate:
+    if: ${{ inputs.terraform_action == 'validate' }}
+    uses: ./.github/workflows/terraform-ci.yml
     with:
-      environment: ${{ inputs.terraform_variable_group }}
-      infra_group: ${{ inputs.infra_group }}
-      action: plan-ci
-      tf_import_id: ${{ inputs.import_id }}
-      tf_import_name: ${{ inputs.import_name }}
-      tf_unlock_id: ${{ inputs.tf_unlock_id }}
-      tf_remove_name: ${{ inputs.tf_remove_name }}
-      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
+      branch: ${{ inputs.branch }}
+      environment: ${{ inputs.environment }}
+      region: ${{ inputs.region }}
+      subscription_id: ${{ inputs.subscription_id }}
+      terraform_version: ${{ inputs.terraform_version }}
     secrets: inherit
 
   plan:
-    if: ${{ inputs.action == 'plan' || inputs.action == 'plan-debug' || inputs.action == 'plan-apply' }}
-    uses: ./.github/workflows/allinfra-iac.yml
+    if: ${{ inputs.terraform_action == 'plan' }}
+    uses: ./.github/workflows/terraform-plan.yml
     with:
-      environment: ${{ inputs.terraform_variable_group }}
-      infra_group: ${{ inputs.infra_group }}
-      action: ${{ inputs.action }}
-      tf_import_id: ${{ inputs.import_id }}
-      tf_import_name: ${{ inputs.import_name }}
-      tf_unlock_id: ${{ inputs.tf_unlock_id }}
-      tf_remove_name: ${{ inputs.tf_remove_name }}
-      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
+      branch: ${{ inputs.branch }}
+      environment: ${{ inputs.environment }}
+      region: ${{ inputs.region }}
+      subscription_id: ${{ inputs.subscription_id }}
+      terraform_version: ${{ inputs.terraform_version }}
     secrets: inherit
 
   apply:
-    if: ${{ inputs.action == 'apply-ci' || inputs.action == 'plan-apply' }}
-    needs: [plan]
-    uses: ./.github/workflows/allinfra-iac.yml
+    if: ${{ inputs.terraform_action == 'apply' }}
+    uses: ./.github/workflows/terraform-apply.yml
     with:
-      environment: ${{ inputs.terraform_variable_group }}
-      infra_group: ${{ inputs.infra_group }}
-      action: apply-ci
-      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
-    secrets: inherit
-
-  destroy-plan:
-    if: ${{ inputs.action == 'destroy-plan' || inputs.action == 'destroy-apply' }}
-    uses: ./.github/workflows/allinfra-iac.yml
-    with:
-      environment: ${{ inputs.terraform_variable_group }}
-      infra_group: ${{ inputs.infra_group }}
-      action: destroy-plan
-      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
-    secrets: inherit
-
-  destroy-apply:
-    if: ${{ inputs.action == 'destroy-apply' }}
-    needs: [destroy-plan]
-    uses: ./.github/workflows/allinfra-iac.yml
-    with:
-      environment: ${{ inputs.terraform_variable_group }}
-      infra_group: ${{ inputs.infra_group }}
-      action: destroy-apply
-      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
+      branch: ${{ inputs.branch }}
+      environment: ${{ inputs.environment }}
+      region: ${{ inputs.region }}
+      subscription_id: ${{ inputs.subscription_id }}
+      terraform_version: ${{ inputs.terraform_version }}
     secrets: inherit
