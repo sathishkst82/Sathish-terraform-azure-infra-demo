@@ -3,65 +3,104 @@ name: allinfra-iac
 on:
   workflow_call:
     inputs:
-      branch:
+      environment:
         required: true
         type: string
-      environment:
+      infra_group:
         required: true
         type: string
       action:
         required: true
         type: string
-      region:
-        required: true
+      tf_import_id:
+        required: false
         type: string
-      subscription_id:
-        required: true
+      tf_import_name:
+        required: false
         type: string
-      terraform_version:
-        required: true
+      tf_unlock_id:
+        required: false
+        type: string
+      tf_remove_name:
+        required: false
+        type: string
+      tf_use_extra_args:
+        required: false
         type: string
     secrets:
       AZURE_CLIENT_ID:
         required: true
       AZURE_TENANT_ID:
         required: true
-
-permissions:
-  contents: read
-  id-token: write
-  pull-requests: write
+      AZURE_SUBSCRIPTION_ID:
+        required: true
 
 jobs:
-  validate:
-    if: ${{ inputs.action == 'validate' }}
-    uses: ./.github/workflows/terraform-ci.yml
-    with:
-      branch: ${{ inputs.branch }}
-      environment: ${{ inputs.environment }}
-      region: ${{ inputs.region }}
-      subscription_id: ${{ inputs.subscription_id }}
-      terraform_version: ${{ inputs.terraform_version }}
-    secrets: inherit
+  terraform:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    env:
+      TF_IN_AUTOMATION: true
+      ENV_DIR: environments/${{ lower(inputs.environment) }}
+      EXTRA_ARGS: ${{ inputs.tf_use_extra_args }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v3
 
-  plan:
-    if: ${{ inputs.action == 'plan' }}
-    uses: ./.github/workflows/terraform-plan.yml
-    with:
-      branch: ${{ inputs.branch }}
-      environment: ${{ inputs.environment }}
-      region: ${{ inputs.region }}
-      subscription_id: ${{ inputs.subscription_id }}
-      terraform_version: ${{ inputs.terraform_version }}
-    secrets: inherit
+      - name: Terraform init
+        run: cd "$ENV_DIR" && terraform init
 
-  apply:
-    if: ${{ inputs.action == 'apply' }}
-    uses: ./.github/workflows/terraform-apply.yml
-    with:
-      branch: ${{ inputs.branch }}
-      environment: ${{ inputs.environment }}
-      region: ${{ inputs.region }}
-      subscription_id: ${{ inputs.subscription_id }}
-      terraform_version: ${{ inputs.terraform_version }}
-    secrets: inherit
+      - name: Terraform fmt/validate/lint/scan/docs
+        if: ${{ inputs.action == 'plan-ci' }}
+        run: |
+          terraform fmt -check -recursive
+          cd "$ENV_DIR"
+          terraform validate
+          cd ../..
+          tflint --init && tflint --recursive
+          wizcli iac scan --path .
+          terraform-docs markdown table --output-check README.md .
+
+      - name: Optional state unlock (plan actions)
+        if: ${{ contains(inputs.action, 'plan') && inputs.tf_unlock_id != '' }}
+        run: cd "$ENV_DIR" && terraform force-unlock -force "${{ inputs.tf_unlock_id }}"
+
+      - name: Optional terraform import (plan actions)
+        if: ${{ contains(inputs.action, 'plan') && inputs.tf_import_id != '' && inputs.tf_import_name != '' }}
+        run: cd "$ENV_DIR" && terraform import $EXTRA_ARGS "${{ inputs.tf_import_name }}" "${{ inputs.tf_import_id }}"
+
+      - name: Optional terraform state rm (plan actions)
+        if: ${{ contains(inputs.action, 'plan') && inputs.tf_remove_name != '' }}
+        run: cd "$ENV_DIR" && terraform state rm $EXTRA_ARGS "${{ inputs.tf_remove_name }}"
+
+      - name: Terraform plan
+        if: ${{ inputs.action == 'plan' || inputs.action == 'plan-debug' || inputs.action == 'plan-apply' || inputs.action == 'plan-ci' }}
+        run: cd "$ENV_DIR" && terraform plan $EXTRA_ARGS -out=tfplan | tee plan.txt
+
+      - name: Upload plan artifact
+        if: ${{ inputs.action == 'plan' || inputs.action == 'plan-debug' || inputs.action == 'plan-apply' || inputs.action == 'plan-ci' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.environment }}-${{ inputs.infra_group }}-tfplan
+          path: ${{ env.ENV_DIR }}/tfplan
+
+      - name: Terraform apply
+        if: ${{ inputs.action == 'apply-ci' || inputs.action == 'plan-apply' }}
+        run: cd "$ENV_DIR" && terraform apply $EXTRA_ARGS -auto-approve tfplan
+
+      - name: Terraform destroy plan
+        if: ${{ inputs.action == 'destroy-plan' || inputs.action == 'destroy-apply' }}
+        run: cd "$ENV_DIR" && terraform plan -destroy $EXTRA_ARGS -out=destroy.tfplan
+
+      - name: Terraform destroy apply
+        if: ${{ inputs.action == 'destroy-apply' }}
+        run: cd "$ENV_DIR" && terraform destroy $EXTRA_ARGS -auto-approve
