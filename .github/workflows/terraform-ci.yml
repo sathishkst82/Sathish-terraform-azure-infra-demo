@@ -1,0 +1,115 @@
+name: terraform-ci
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Git branch to execute
+        required: true
+        type: string
+        default: main
+      environment:
+        description: Deployment environment
+        required: true
+        type: choice
+        options: [dev, prod]
+      region:
+        description: Azure Region
+        required: true
+        type: string
+        default: eastus
+      subscription_id:
+        description: Azure subscription id
+        required: true
+        type: string
+      terraform_version:
+        description: Terraform version
+        required: true
+        type: string
+        default: 1.8.5
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      region:
+        required: true
+        type: string
+      subscription_id:
+        required: true
+        type: string
+      terraform_version:
+        required: true
+        type: string
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      TF_IN_AUTOMATION: true
+      TF_INPUT: false
+      TF_VAR_region: ${{ inputs.region || github.event.inputs.region || 'eastus' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch || github.event.inputs.branch || github.ref_name }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform_version || github.event.inputs.terraform_version || '1.8.5' }}
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ inputs.subscription_id || github.event.inputs.subscription_id }}
+
+      - name: Terraform init
+        run: terraform init -backend=false
+
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Run TFLint
+        run: |
+          tflint --init
+          tflint --recursive
+
+      - name: Wiz CLI IaC Scan
+        run: wizcli iac scan --path .
+
+      - name: Terraform Docs validation
+        run: terraform-docs markdown table --output-check README.md .
+
+      - name: Upload validation artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-ci-${{ github.run_id }}
+          path: |
+            .
+          if-no-files-found: warn
