@@ -1,0 +1,11 @@
+name: policy-validation
+on:
+  pull_request:
+    paths: ["docs/policies/**", "modules/governance/**"]
+jobs:
+  policy-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: jq . docs/policies/*.json
+      - run: echo "OPA placeholder: conftest test docs/policies"
