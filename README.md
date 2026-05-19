@@ -1,2 +1,3 @@
 # Sathish-terraform-azure-infra-demo
-DevOps Technical Challenge: Provision Azure Infrastructure with Terraform
+
+Repository reset requested by user. Awaiting new prompt for fresh implementation.
