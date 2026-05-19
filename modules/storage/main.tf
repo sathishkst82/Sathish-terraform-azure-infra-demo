@@ -1,9 +1,4 @@
-resource "random_string" "suffix" {
-  length  = 4
-  special = false
-  upper   = false
-}
-
+resource "random_string" "suffix" { length = 4 special = false upper = false }
 resource "azurerm_storage_account" "this" {
   name                            = lower(replace("${var.storage_account_name}${random_string.suffix.result}", "-", ""))
   resource_group_name             = var.resource_group_name
@@ -16,7 +11,6 @@ resource "azurerm_storage_account" "this" {
   shared_access_key_enabled       = false
   tags                            = var.tags
 }
-
 resource "azurerm_storage_container" "this" {
   for_each              = toset(var.containers)
   name                  = each.value
