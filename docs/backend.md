@@ -1,0 +1,11 @@
+# Backend init examples
+
+Use environment secrets/variables to avoid hardcoding backend values:
+
+```bash
+terraform -chdir=environments/dev init \
+  -backend-config="resource_group_name=$TF_BACKEND_RESOURCE_GROUP" \
+  -backend-config="storage_account_name=$TF_BACKEND_STORAGE_ACCOUNT" \
+  -backend-config="container_name=$TF_BACKEND_CONTAINER" \
+  -backend-config="key=$TF_BACKEND_KEY"
+```

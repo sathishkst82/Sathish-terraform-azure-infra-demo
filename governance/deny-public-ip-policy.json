@@ -1,0 +1,1 @@
+{"properties":{"displayName":"Deny Public IP","policyType":"Custom","mode":"All","policyRule":{"if":{"field":"type","equals":"Microsoft.Network/publicIPAddresses"},"then":{"effect":"deny"}}}}

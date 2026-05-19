@@ -1,0 +1,11 @@
+name: docs-validation
+on:
+  pull_request:
+    paths: ['README.md','modules/**','environments/**']
+  workflow_dispatch:
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: terraform-docs markdown table --output-check README.md .

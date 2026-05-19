@@ -1,0 +1,66 @@
+name: iac-dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      environment: { type: choice, required: true, options: [DEV, UAT, PROD] }
+      branch: { type: string, required: true, default: main }
+      action: { type: choice, required: true, options: [validate, plan, plan-apply, destroy-plan, destroy-apply] }
+      tf_lock_id: { type: string, required: false }
+      tf_import_id: { type: string, required: false }
+      tf_import_name: { type: string, required: false }
+      tf_remove_name: { type: string, required: false }
+      tf_use_extra_args: { type: boolean, required: false, default: false }
+permissions: { contents: read, id-token: write, pull-requests: write }
+jobs:
+  validate:
+    if: ${{ inputs.action == 'validate' }}
+    uses: ./.github/workflows/terraform-validate.yml
+    with:
+      environment: ${{ inputs.environment }}
+      branch: ${{ inputs.branch }}
+      terraform_version: "1.8.5"
+      tf_lock_id: ${{ inputs.tf_lock_id }}
+      tf_import_id: ${{ inputs.tf_import_id }}
+      tf_import_name: ${{ inputs.tf_import_name }}
+      tf_remove_name: ${{ inputs.tf_remove_name }}
+      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
+    secrets: inherit
+  plan:
+    if: ${{ inputs.action == 'plan' || inputs.action == 'plan-apply' }}
+    uses: ./.github/workflows/terraform-plan.yml
+    with:
+      environment: ${{ inputs.environment }}
+      branch: ${{ inputs.branch }}
+      terraform_version: "1.8.5"
+      tf_lock_id: ${{ inputs.tf_lock_id }}
+      tf_import_id: ${{ inputs.tf_import_id }}
+      tf_import_name: ${{ inputs.tf_import_name }}
+      tf_remove_name: ${{ inputs.tf_remove_name }}
+      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
+    secrets: inherit
+  apply:
+    if: ${{ inputs.action == 'plan-apply' }}
+    needs: [plan]
+    uses: ./.github/workflows/terraform-apply.yml
+    with:
+      environment: ${{ inputs.environment }}
+      branch: ${{ inputs.branch }}
+      terraform_version: "1.8.5"
+    secrets: inherit
+  destroy_plan:
+    if: ${{ inputs.action == 'destroy-plan' || inputs.action == 'destroy-apply' }}
+    uses: ./.github/workflows/terraform-destroy-plan.yml
+    with:
+      environment: ${{ inputs.environment }}
+      branch: ${{ inputs.branch }}
+      terraform_version: "1.8.5"
+    secrets: inherit
+  destroy_apply:
+    if: ${{ inputs.action == 'destroy-apply' }}
+    needs: [destroy_plan]
+    uses: ./.github/workflows/terraform-destroy-apply.yml
+    with:
+      environment: ${{ inputs.environment }}
+      branch: ${{ inputs.branch }}
+      terraform_version: "1.8.5"
+    secrets: inherit

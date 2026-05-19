@@ -1,0 +1,21 @@
+{
+  "properties": {
+    "displayName": "Require mandatory tags",
+    "policyType": "Custom",
+    "mode": "All",
+    "parameters": {
+      "tagName": {
+        "type": "String"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "field": "[concat('tags[', parameters('tagName'), ']')]",
+        "exists": "false"
+      },
+      "then": {
+        "effect": "deny"
+      }
+    }
+  }
+}

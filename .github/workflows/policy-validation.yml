@@ -1,0 +1,15 @@
+name: policy-validation
+on:
+  pull_request:
+    paths:
+      - 'governance/**'
+      - 'modules/governance/**'
+  workflow_dispatch:
+jobs:
+  validate-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: jq empty governance/*.json
+      - run: test -d modules/governance
+      - run: echo "OPA integration placeholder"
