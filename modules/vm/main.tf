@@ -31,12 +31,30 @@ resource "azurerm_linux_virtual_machine" "this" {
   disable_password_authentication = true
   network_interface_ids           = [azurerm_network_interface.this[each.key].id]
 
-  admin_ssh_key { username = var.admin_username public_key = var.ssh_public_key }
+  admin_ssh_key {
+    username   = var.admin_username
+    public_key = var.ssh_public_key
+  }
 
-  source_image_reference { publisher = "Canonical" offer = "0001-com-ubuntu-server-jammy" sku = "22_04-lts-gen2" version = "latest" }
-  os_disk { caching = "ReadWrite" storage_account_type = "StandardSSD_LRS" }
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
+    version   = "latest"
+  }
 
-  identity { type = "SystemAssigned" }
-  boot_diagnostics { storage_account_uri = var.boot_diagnostics_storage_uri }
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "StandardSSD_LRS"
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  boot_diagnostics {
+    storage_account_uri = var.boot_diagnostics_storage_uri
+  }
+
   tags = var.tags
 }

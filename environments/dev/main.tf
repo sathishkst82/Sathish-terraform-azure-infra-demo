@@ -6,7 +6,9 @@ terraform {
     key                  = "dev.terraform.tfstate"
   }
 }
-provider "azurerm" { features {} }
+provider "azurerm" {
+  features {}
+}
 
 locals {
   org = "opella"
@@ -27,7 +29,11 @@ locals {
     sa   = "st${local.org}${local.env}eus001"
   }
 }
-resource "azurerm_resource_group" "this" { name = local.names.rg location = local.location tags = local.common_tags }
+resource "azurerm_resource_group" "this" {
+  name     = local.names.rg
+  location = local.location
+  tags     = local.common_tags
+}
 module "vnet" {
   source = "../../modules/vnet"
   resource_group_name = azurerm_resource_group.this.name
@@ -43,7 +49,14 @@ module "vnet" {
     future = { name = "future-reserved-subnet", address_prefixes = ["10.10.254.0/24"] }
   }
 }
-module "storage" { source="../../modules/storage" resource_group_name=azurerm_resource_group.this.name location=local.location storage_account_name=local.names.sa containers=["tfstate","logs","artifacts"] tags=local.common_tags }
+module "storage" {
+  source                     = "../../modules/storage"
+  resource_group_name        = azurerm_resource_group.this.name
+  location                   = local.location
+  storage_account_name       = local.names.sa
+  containers                 = ["tfstate", "logs", "artifacts"]
+  tags                       = local.common_tags
+}
 module "vm" {
   source = "../../modules/vm"
   resource_group_name = azurerm_resource_group.this.name
