@@ -1,0 +1,76 @@
+name: Main IaC Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      terraform_variable_group:
+        type: choice
+        description: Select the environment.
+        default: DEV
+        options:
+          - DEV
+          - UAT
+          - PROD
+      infra_group:
+        type: choice
+        description: Select the infrastructure group.
+        options:
+          - aks
+          - apim-apis
+          - appvms
+          - base
+          - dbvms
+          - linux
+          - network
+          - recovery
+      action:
+        type: choice
+        description: Select the terraform action to run.
+        default: plan
+        options:
+          - plan-ci
+          - apply-ci
+          - plan
+          - plan-debug
+          - plan-apply
+          - destroy-plan
+          - destroy-apply
+      import_id:
+        type: string
+        description: OPTIONAL resource id to import (plan actions only).
+        required: false
+        default: ''
+      import_name:
+        type: string
+        description: OPTIONAL resource address/name to import (plan actions only).
+        required: false
+        default: ''
+      tf_unlock_id:
+        type: string
+        description: OPTIONAL state lock ID to unlock (plan actions only).
+        required: false
+        default: ''
+      tf_remove_name:
+        type: string
+        description: OPTIONAL state resource address to remove (plan actions only).
+        required: false
+        default: ''
+      tf_use_extra_args:
+        type: string
+        description: OPTIONAL extra terraform CLI args.
+        required: false
+        default: ''
+
+jobs:
+  run:
+    uses: ./.github/workflows/allinfra-iac.yml
+    with:
+      environment: ${{ inputs.terraform_variable_group }}
+      infra_group: ${{ inputs.infra_group }}
+      action: ${{ inputs.action }}
+      tf_import_id: ${{ inputs.import_id }}
+      tf_import_name: ${{ inputs.import_name }}
+      tf_unlock_id: ${{ inputs.tf_unlock_id }}
+      tf_remove_name: ${{ inputs.tf_remove_name }}
+      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
+    secrets: inherit
