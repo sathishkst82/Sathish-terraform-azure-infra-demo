@@ -1,0 +1,131 @@
+name: workflow-dispatch
+
+on:
+  workflow_dispatch:
+    inputs:
+      terraform_variable_group:
+        type: choice
+        description: Select the environment.
+        default: DEV
+        options:
+          - DEV
+          - UAT
+          - PROD
+      infra_group:
+        type: choice
+        description: Select the infrastructure group.
+        options:
+          - aks
+          - apim-apis
+          - appvms
+          - base
+          - dbvms
+          - linux
+          - network
+          - recovery
+      action:
+        type: choice
+        description: Select the terraform action to run.
+        default: plan
+        options:
+          - plan-ci
+          - apply-ci
+          - plan
+          - plan-debug
+          - plan-apply
+          - destroy-plan
+          - destroy-apply
+      import_id:
+        type: string
+        description: |
+          OPTIONAL: id of a resource to import into terraform state.
+          Requires "plan" Action.
+        required: false
+        default: ''
+      import_name:
+        type: string
+        description: |
+          OPTIONAL: name of the resource to import into terraform state.
+          Requires "plan" Action.
+        required: false
+        default: ''
+      tf_unlock_id:
+        type: string
+        description: |
+          OPTIONAL: Unlock state file by entering the lock id from the state lock conflict error message.
+          Requires "plan" Action.
+        required: false
+        default: ''
+      tf_remove_name:
+        type: string
+        description: |
+          OPTIONAL: Remove part of the state file by entering the resource name to remove.
+          Requires "plan" Action.
+        required: false
+        default: ''
+      tf_use_extra_args:
+        type: string
+        description: OPTIONAL: Additional terraform CLI args.
+        required: false
+        default: ''
+
+jobs:
+  plan-ci:
+    if: ${{ inputs.action == 'plan-ci' }}
+    uses: ./.github/workflows/allinfra-iac.yml
+    with:
+      environment: ${{ inputs.terraform_variable_group }}
+      infra_group: ${{ inputs.infra_group }}
+      action: plan-ci
+      tf_import_id: ${{ inputs.import_id }}
+      tf_import_name: ${{ inputs.import_name }}
+      tf_unlock_id: ${{ inputs.tf_unlock_id }}
+      tf_remove_name: ${{ inputs.tf_remove_name }}
+      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
+    secrets: inherit
+
+  plan:
+    if: ${{ inputs.action == 'plan' || inputs.action == 'plan-debug' || inputs.action == 'plan-apply' }}
+    uses: ./.github/workflows/allinfra-iac.yml
+    with:
+      environment: ${{ inputs.terraform_variable_group }}
+      infra_group: ${{ inputs.infra_group }}
+      action: ${{ inputs.action }}
+      tf_import_id: ${{ inputs.import_id }}
+      tf_import_name: ${{ inputs.import_name }}
+      tf_unlock_id: ${{ inputs.tf_unlock_id }}
+      tf_remove_name: ${{ inputs.tf_remove_name }}
+      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
+    secrets: inherit
+
+  apply:
+    if: ${{ inputs.action == 'apply-ci' || inputs.action == 'plan-apply' }}
+    needs: [plan]
+    uses: ./.github/workflows/allinfra-iac.yml
+    with:
+      environment: ${{ inputs.terraform_variable_group }}
+      infra_group: ${{ inputs.infra_group }}
+      action: apply-ci
+      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
+    secrets: inherit
+
+  destroy-plan:
+    if: ${{ inputs.action == 'destroy-plan' || inputs.action == 'destroy-apply' }}
+    uses: ./.github/workflows/allinfra-iac.yml
+    with:
+      environment: ${{ inputs.terraform_variable_group }}
+      infra_group: ${{ inputs.infra_group }}
+      action: destroy-plan
+      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
+    secrets: inherit
+
+  destroy-apply:
+    if: ${{ inputs.action == 'destroy-apply' }}
+    needs: [destroy-plan]
+    uses: ./.github/workflows/allinfra-iac.yml
+    with:
+      environment: ${{ inputs.terraform_variable_group }}
+      infra_group: ${{ inputs.infra_group }}
+      action: destroy-apply
+      tf_use_extra_args: ${{ inputs.tf_use_extra_args }}
+    secrets: inherit
