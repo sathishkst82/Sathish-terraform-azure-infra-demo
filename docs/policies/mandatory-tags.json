@@ -1,0 +1,1 @@
+{"if":{"field":"type","equals":"Microsoft.Resources/subscriptions/resourceGroups"},"then":{"effect":"auditIfNotExists","details":{"type":"Microsoft.Resources/tags","existenceCondition":{"allOf":[{"field":"tags.Environment","exists":"true"},{"field":"tags.Project","exists":"true"}]}}}}
