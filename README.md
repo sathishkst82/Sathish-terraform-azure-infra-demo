@@ -13,8 +13,8 @@ flowchart TB
   VNET --> S3[data-subnet]
   VNET --> S4[private-endpoint-subnet]
   VNET --> S5[future-reserved-subnet]
-  RG --> VM[Linux VMs]
-  RG --> SA[Storage Account and Containers]
+  RG --> VM[Linux VM(s)]
+  RG --> SA[Storage Account + Containers]
   RG --> GOV[Policy Initiative: Opella-Governance-Baseline]
 ```
 

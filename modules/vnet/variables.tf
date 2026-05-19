@@ -1,37 +1,10 @@
-variable "resource_group_name" {
-  type = string
-}
-
-variable "location" {
-  type = string
-}
-
-variable "vnet_name" {
-  type = string
-}
-
-variable "address_space" {
-  type = list(string)
-}
-
-variable "dns_servers" {
-  type    = list(string)
-  default = null
-}
-
-variable "tags" {
-  type    = map(string)
-  default = {}
-}
-
-variable "ddos_protection" {
-  type = object({
-    id     = string
-    enable = bool
-  })
-  default = null
-}
-
+variable "resource_group_name" { type = string }
+variable "location" { type = string }
+variable "vnet_name" { type = string }
+variable "address_space" { type = list(string) }
+variable "dns_servers" { type = list(string) default = null }
+variable "tags" { type = map(string) default = {} }
+variable "ddos_protection" { type = object({ id = string, enable = bool }) default = null }
 variable "subnets" {
   type = map(object({
     name              = string
@@ -49,10 +22,6 @@ variable "subnets" {
       source_address_prefix      = string
       destination_address_prefix = string
     })), [])
-    delegations = optional(list(object({
-      name    = string
-      service = string
-      actions = list(string)
-    })), [])
+    delegations = optional(list(object({ name = string, service = string, actions = list(string) })), [])
   }))
 }

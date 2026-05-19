@@ -45,7 +45,7 @@ jobs:
       pull-requests: write
     env:
       TF_IN_AUTOMATION: true
-      ENV_DIR: ${{ inputs.environment == 'DEV' && 'environments/dev' || inputs.environment == 'UAT' && 'environments/uat' || 'environments/prod' }}
+      ENV_DIR: environments/${{ lower(inputs.environment) }}
       EXTRA_ARGS: ${{ inputs.tf_use_extra_args }}
     steps:
       - uses: actions/checkout@v4
