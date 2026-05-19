@@ -1,58 +1,15 @@
 name: terraform-apply
-
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
-    inputs:
-      branch: { description: Git branch to execute, required: true, type: string, default: main }
-      environment: { description: Deployment environment, required: true, type: choice, options: [dev, prod] }
-      region: { description: Azure Region, required: true, type: string, default: eastus }
-      subscription_id: { description: Azure subscription id, required: true, type: string }
-      terraform_version: { description: Terraform version, required: true, type: string, default: 1.8.5 }
-  workflow_call:
-    inputs:
-      branch: { required: true, type: string }
-      environment: { required: true, type: string }
-      region: { required: true, type: string }
-      subscription_id: { required: true, type: string }
-      terraform_version: { required: true, type: string }
-    secrets:
-      AZURE_CLIENT_ID: { required: true }
-      AZURE_TENANT_ID: { required: true }
-
-permissions:
-  contents: read
-  id-token: write
-
+    branches: [main]
 jobs:
   apply:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || github.event.inputs.environment || 'prod' }}
-    env:
-      TF_IN_AUTOMATION: true
-      TF_INPUT: false
+    environment: production
+    permissions: { id-token: write, contents: read }
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.branch || github.event.inputs.branch || github.ref_name }}
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ inputs.terraform_version || github.event.inputs.terraform_version || '1.8.5' }}
       - uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ inputs.subscription_id || github.event.inputs.subscription_id }}
-      - name: Terraform init
-        run: terraform init
-      - name: Terraform plan
-        run: terraform plan -var="region=${{ inputs.region || github.event.inputs.region || 'eastus' }}" -out=tfplan
-      - name: Terraform apply
-        run: terraform apply -auto-approve tfplan
-      - name: Post deployment summary
-        run: |
-          echo "### Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "Environment: ${{ inputs.environment || github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "Region: ${{ inputs.region || github.event.inputs.region }}" >> $GITHUB_STEP_SUMMARY
-          echo "Status: Applied" >> $GITHUB_STEP_SUMMARY
+        with: { client-id: ${{ secrets.AZURE_CLIENT_ID }}, tenant-id: ${{ secrets.AZURE_TENANT_ID }}, subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }} }
+      - uses: hashicorp/setup-terraform@v3
+      - run: cd environments/prod && terraform init && terraform apply -auto-approve
