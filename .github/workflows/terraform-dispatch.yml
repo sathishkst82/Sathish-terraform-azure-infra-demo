@@ -1,0 +1,87 @@
+name: terraform-dispatch
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Git branch to execute
+        required: true
+        type: string
+        default: main
+      environment:
+        description: Deployment environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+      terraform_action:
+        description: Terraform operation
+        required: true
+        type: choice
+        options:
+          - validate
+          - plan
+          - apply
+      region:
+        description: Azure Region
+        required: true
+        type: string
+        default: eastus
+      subscription_id:
+        description: Azure subscription id
+        required: true
+        type: string
+      terraform_version:
+        description: Terraform version
+        required: true
+        type: string
+        default: 1.8.5
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  validate:
+    if: ${{ inputs.terraform_action == 'validate' }}
+    environment: ${{ inputs.environment }}
+    uses: ./.github/workflows/terraform-ci.yml
+    with:
+      branch: ${{ inputs.branch }}
+      environment: ${{ inputs.environment }}
+      region: ${{ inputs.region }}
+      subscription_id: ${{ inputs.subscription_id }}
+      terraform_version: ${{ inputs.terraform_version }}
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+  plan:
+    if: ${{ inputs.terraform_action == 'plan' }}
+    environment: ${{ inputs.environment }}
+    uses: ./.github/workflows/terraform-plan.yml
+    with:
+      branch: ${{ inputs.branch }}
+      environment: ${{ inputs.environment }}
+      region: ${{ inputs.region }}
+      subscription_id: ${{ inputs.subscription_id }}
+      terraform_version: ${{ inputs.terraform_version }}
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+  apply:
+    if: ${{ inputs.terraform_action == 'apply' }}
+    environment: ${{ inputs.environment }}
+    uses: ./.github/workflows/terraform-apply.yml
+    with:
+      branch: ${{ inputs.branch }}
+      environment: ${{ inputs.environment }}
+      region: ${{ inputs.region }}
+      subscription_id: ${{ inputs.subscription_id }}
+      terraform_version: ${{ inputs.terraform_version }}
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
