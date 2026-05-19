@@ -1,0 +1,1 @@
+{"if":{"field":"location","notIn":"[parameters('allowedLocations')]"},"then":{"effect":"deny"}}
